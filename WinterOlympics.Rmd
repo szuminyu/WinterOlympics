@@ -1,0 +1,389 @@
+---
+title: "WinterOlympics1_RStudioIntern"
+author: "szumin"
+date: "2/25/2018"
+output: html_document
+---
+
+```{r Setup, include=FALSE, results='hide', warning=FALSE}
+library(knitr)
+opts_chunk$set(fig.path="images/",
+               cache.path="cache/",
+               cache=FALSE,
+               echo=TRUE,
+               message=FALSE,
+               warning=FALSE)  
+```
+
+```{r Q1}
+####Q1.
+
+#set up
+library(readr)
+library(readxl)
+library(ggplot2)
+library(tidyverse)
+library(ggpubr)
+library(rvest)
+library(stringr)
+library(plotly)
+library(DT)
+library(car)
+library(ggrepel)
+
+winter <- read.csv("/Users/Sumin/Desktop/R/winter.csv")
+
+###recode Germany and Russia
+library(car)
+winter$Country <- recode(winter$Country, "'EUA' = 'GER'")
+winter$Country <- recode(winter$Country, "'FRG' = 'GER'")
+winter$Country <- recode(winter$Country, "'GDR' = 'GER'")
+
+winter$Country <- recode(winter$Country, "'RU1' = 'RUS'")
+winter$Country <- recode(winter$Country, "'URS' = 'RUS'")
+winter$Country <- recode(winter$Country, "'EUN' = 'RUS'")
+
+###combine two datasets
+
+dictionary <- read.csv("/Users/Sumin/Desktop/R/dictionary.csv")
+
+#rename the country code
+
+winter <- rename(winter, Code = Country)
+head(winter)
+data_plot <- merge(dictionary, winter , by= "Code")
+
+###create a data plot
+
+data_plot <- data_plot %>% mutate(x = NULL)
+# create index for medals 
+data_plot <- data_plot %>% mutate(gold = ifelse(Medal == "Gold", 1, 0))
+data_plot <- data_plot %>% mutate(silver = ifelse(Medal == "Silver", 1, 0))
+data_plot <- data_plot %>% mutate(bronze = ifelse(Medal == "Bronze", 1, 0))
+#create a dataframe that includes code, country, year, gold, silver, and bronze
+data_q1 <- data.frame(data_plot$Code, data_plot$Country, data_plot$Year, data_plot$gold, data_plot$silver, data_plot$bronze)
+#rename the column
+data_q1 <- tbl_df(data_q1)
+#dara_q1 <- rename(data_q1, code = data_plot.Code) doesn't work
+#the amount of all medals
+data_q1 <- 
+  data_q1 %>%
+  group_by(data_plot.Code,data_plot.Year) %>%
+  add_tally()
+#slice the duplicate rows
+data_q1 <- data_q1 %>% slice(1L)
+
+###Top five most powerful countries
+
+# USA
+data_q1$is_USA <- "Rest of the world"
+data_q1$is_USA[data_q1$data_plot.Code=="USA"] <- "USA"
+# plot - USA
+q1plot_usa<- ggplot(data_q1, aes(x = data_plot.Year, y = n))+
+  geom_line(data=subset(data_q1, data_q1$is_USA=="USA"), aes(color = is_USA))+
+  xlab("Years of Winter Olympics")+
+  ylab("Total Medal Earns")+
+  ggtitle("The Most Powerful Country: #1 United States\n", subtitle = "Rankings from U.S. News 2018")+
+  scale_color_manual(values = c("#0570b0"))+
+  theme_bw()+
+  theme(
+    legend.position ="none",
+    legend.title=element_blank())
+
+
+#Russia
+data_q1$is_Russia <- "Rest of the world"
+data_q1$is_Russia[data_q1$data_plot.Code=="RUS"] <- "RUS"
+#plot
+q1plot_russia <- ggplot(data_q1, aes(x = data_plot.Year, y = n))+
+  geom_line(data=subset(data_q1, data_q1$is_Russia=="RUS"), aes(color = is_Russia))+
+  xlab("Years of Winter Olympics")+
+  ylab("Total Medal Earns")+
+  ggtitle("The Most Powerful Country: #2 Russia", subtitle = "Including RU1, URS ,and EUN\nRankings from U.S. News 2018")+
+  scale_color_manual(values = c("#016c59"))+
+  scale_x_continuous(breaks= data_q1$data_plot.Year)+
+  theme_bw()+
+  theme(
+    legend.position ="none",
+    legend.title=element_blank())+
+  theme(axis.text.x = element_text(angle = -20, vjust = 1, hjust = 0))
+
+
+#China
+data_q1$is_China <- "Rest of the world"
+data_q1$is_China[data_q1$data_plot.Code=="CHN"] <- "CHN"
+#plot
+q1plot_china <- ggplot(data_q1, aes(x = data_plot.Year, y = n))+
+  geom_line(data=subset(data_q1, data_q1$is_China=="CHN"), aes(color = is_China))+
+  xlab("Years of Winter Olympics")+
+  ylab("Total Medal Earns")+
+  ggtitle("The Most Powerful Country: #3 China\n",subtitle = "Rankings from U.S. News 2018")+
+  scale_color_manual(values = c("#b30000"))+
+  scale_x_continuous(breaks= data_q1$data_plot.Year)+ 
+  theme_bw()+
+  theme(
+    legend.position ="none",
+    legend.title=element_blank())
+
+
+#Germany
+data_q1$is_Germany <- "Rest of the world"
+data_q1$is_Germany[data_q1$data_plot.Code=="GER"] <- "GER"
+#plot
+q1plot_germany <- ggplot(data_q1, aes(x = data_plot.Year, y = n))+
+  geom_line(data=subset(data_q1, data_q1$is_Germany=="GER"), aes(color = is_Germany))+
+  xlab("Years of Winter Olympics")+
+  ylab("Total Medal Earns")+
+  ggtitle("The Most Powerful Country:#4 Germany", subtitle = "Including EUA, FRG, GDR\nRankings from U.S.News 2018")+
+  scale_color_manual(values = c("#7a0177"))+
+  scale_x_continuous(breaks= data_q1$data_plot.Year)+ 
+  theme_bw()+
+  theme(
+    legend.position ="none",
+    legend.title=element_blank())
+
+#France
+data_q1$is_france <- "Rest of the world"
+data_q1$is_france[data_q1$data_plot.Code=="FRA"] <- "FRA"
+#plot
+q1plot_france <- ggplot(data_q1, aes(x = data_plot.Year, y = n))+
+  geom_line(data=subset(data_q1, data_q1$is_france=="FRA"), aes(color = is_france))+
+  xlab("Years of Winter Olympics")+
+  ylab("Total Medal Earns")+
+  ggtitle("The Most Powerful Country: #6 France\n", subtitle = "Rankings from U.S.News 2018  (#5 UK does not participate in Winter Olympics.)")+
+  scale_color_manual(values = c("#fd8d3c"))+
+  scale_x_continuous(breaks= data_q1$data_plot.Year)+ 
+  theme_bw()+
+  theme(
+    legend.position ="none",
+    legend.title=element_blank())+
+  theme(axis.text.x = element_text(angle = -40, vjust = 1, hjust = 0))
+
+q1plot_usa
+q1plot_russia
+q1plot_china
+q1plot_germany
+q1plot_france
+```
+
+```{r Q2}
+####Q2
+
+# adjusting with GDP and population
+data_q2 <- data.frame(data_plot$Code,data_plot$Country,data_plot$Population,data_plot$GDP.per.Capita,data_plot$Year,data_plot$Medal)
+
+#sort by year and countrycode
+data_q2 <- mutate(data_q2, gold = ifelse(data_plot.Medal == "Gold", 1, 0))
+data_q2a <- filter(data_q2, gold == 1)
+
+#sum the gold medals 
+data_q2a <- 
+  data_q2a %>%
+  group_by(data_plot.Code, data_plot.Year) %>%
+  add_tally()
+#add golds through yeslirs in countries
+data_q2a <- data_q2 %>%
+  group_by(data_plot.Code) %>%
+  add_tally() 
+#new dataframe:sum of the golds amoung countries
+data_q2a <- data_q2a %>% mutate(data_plot.Year = NULL)
+data_q2a <- distinct(data_q2a,data_plot.Code,data_plot.Country,data_plot.Population,data_plot.GDP.per.Capita,n)
+
+#top 10
+data_q2a$is_top10 <- NA
+data_q2a$is_top10[data_q2a$data_plot.Code == "RUS"] <- "RUS"
+data_q2a$is_top10[data_q2a$data_plot.Code == "USA"] <- "USA"
+data_q2a$is_top10[data_q2a$data_plot.Code == "GER"] <- "GER"
+data_q2a$is_top10[data_q2a$data_plot.Code == "CAN"] <- "CAN"
+data_q2a$is_top10[data_q2a$data_plot.Code == "NOR"] <- "NOR"
+data_q2a$is_top10[data_q2a$data_plot.Code == "FIN"] <- "FIN"
+data_q2a$is_top10[data_q2a$data_plot.Code == "SWE"] <- "SWE"
+data_q2a$is_top10[data_q2a$data_plot.Code == "SUI"] <- "SUI"
+data_q2a$is_top10[data_q2a$data_plot.Code == "AUT"] <- "AUT"
+data_q2a$is_top10[data_q2a$data_plot.Code == "ITA"] <- "ITA"
+
+#only top 10, drop other obeservations
+data_q2a <- data_q2a %>%
+  filter(ave(!is.na(is_top10), FUN = all))
+
+###Plotting
+#Original rankings
+q2_original<-ggplot(data=subset(data_q2a, !is.na(is_top10)),aes(x= reorder(is_top10,-n), y=n, fill = is_top10))+
+  geom_bar(stat = "identity", position = "stack", width = .25, fill = "#74a9cf")+
+  ylab("Total earned")+
+  xlab("")+
+  theme_bw()+
+  theme(legend.position ="none",legend.title=element_blank(),axis.title.y = element_text(size = rel(1)))
+
+#adjusted by population
+
+data_q2a <- data_q2a %>% mutate(logpopu = log(data_plot.Population))
+
+q2_population <- ggplot(data_q2a, aes(x= reorder(data_plot.Code,-logpopu), y = logpopu))+
+  geom_bar(stat = "identity", position = "stack", width = .25, fill = "#3690c0")+
+  ylab("Log population")+
+  xlab("")+
+  theme_bw()+
+  theme(legend.position ="none",legend.title=element_blank(),axis.title.y = element_text(size = rel(1)))
+
+
+#adjusted by gdp
+
+q2_gdp<-ggplot(data_q2a, aes(x= reorder(data_plot.Code,-data_plot.GDP.per.Capita), y = data_plot.GDP.per.Capita))+
+  geom_bar(stat = "identity", position = "stack", width = .25, fill = "#0570b0")+
+  ylab("GDP")+
+  xlab("")+
+  theme_bw()+
+  theme(legend.position ="none",legend.title=element_blank(),axis.title.y = element_text(size = rel(1)))
+
+
+q2_original
+q2_population
+q2_gdp
+
+### Combine my plots
+
+library(ggpubr)
+q2_plota <- ggarrange(q2_original,q2_population,q2_gdp, ncol = 1, nrow = 3,widths = 1, heights = c(1,1,1))
+plot_q2 <- annotate_figure(q2_plota,top = text_grob("Top 10 Countries in Winter Olympics: Ranked by Gold Medals", color = "#252525", size = 14), bottom = text_grob("Country", color = "#252525"))
+plot_q2
+```
+
+```{r Q3}
+####Q3
+
+#import data
+library(rvest)
+library(stringr)
+wiki_hosts <- read_html("https://en.wikipedia.org/wiki/Winter_Olympic_Games")
+hosts <- html_table(html_nodes(wiki_hosts, "table")[[5]], fill=TRUE)
+hosts <- hosts[-1,1:3]
+hosts$city <- str_split_fixed(hosts$Host, n=2, ",")[,1]
+hosts$country <- str_split_fixed(hosts$Host, n=2, ",")[,2]
+#clean the data
+data_q3 <- data_q1
+data_q3 <- mutate(data_q3, is_USA = NULL, is_france = NULL, is_Germany = NULL, is_China = NULL, is_Russia = NULL)
+#add subgroup, hosting year
+data_q3$is_host <- "Participant"
+data_q3$is_host[data_q3$data_plot.Code == "FRA" & data_q3$data_plot.Year == "1924"] <- "host"
+data_q3$is_host[data_q3$data_plot.Code == "FRA" & data_q3$data_plot.Year == "1968"] <- "host"
+data_q3$is_host[data_q3$data_plot.Code == "FRA" & data_q3$data_plot.Year == "1992"] <- "host"
+data_q3$is_host[data_q3$data_plot.Code == "SUI" & data_q3$data_plot.Year == "1928"] <- "host"
+data_q3$is_host[data_q3$data_plot.Code == "SUI" & data_q3$data_plot.Year == "1948"] <- "host"
+data_q3$is_host[data_q3$data_plot.Code == "USA" & data_q3$data_plot.Year == "1932"] <- "host"
+data_q3$is_host[data_q3$data_plot.Code == "USA" & data_q3$data_plot.Year == "1960"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "USA" & data_q3$data_plot.Year == "1980"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "USA" & data_q3$data_plot.Year == "2002"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "GER" & data_q3$data_plot.Year == "1936"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "NOR" & data_q3$data_plot.Year == "1952"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "NOR" & data_q3$data_plot.Year == "1994"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "ITA" & data_q3$data_plot.Year == "1956"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "ITA" & data_q3$data_plot.Year == "2006"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "AUT" & data_q3$data_plot.Year == "1964"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "AUT" & data_q3$data_plot.Year == "1976"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "JPN" & data_q3$data_plot.Year == "1972"]<- "host" 
+data_q3$is_host[data_q3$data_plot.Code == "JPN" & data_q3$data_plot.Year == "1998"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "CAN" & data_q3$data_plot.Year == "1988"]<- "host" 
+data_q3$is_host[data_q3$data_plot.Code == "CAN" & data_q3$data_plot.Year == "2010"]<- "host"
+data_q3$is_host[data_q3$data_plot.Code == "RUS" & data_q3$data_plot.Year == "2014"]<- "host"
+
+data_q3$h_country <- NA
+data_q3$h_country[data_q3$data_plot.Code == "FRA"] <- "FRA"
+data_q3$h_country[data_q3$data_plot.Code == "SUI"] <- "SUI"
+data_q3$h_country[data_q3$data_plot.Code == "USA"] <- "USA"
+data_q3$h_country[data_q3$data_plot.Code == "GER"] <- "GER"
+data_q3$h_country[data_q3$data_plot.Code == "NOR"] <- "NOR"
+data_q3$h_country[data_q3$data_plot.Code == "ITA"] <- "ITA"
+data_q3$h_country[data_q3$data_plot.Code == "AUT"] <- "AUT"
+data_q3$h_country[data_q3$data_plot.Code == "JPN"] <- "JPN"
+data_q3$h_country[data_q3$data_plot.Code == "CAN"] <- "CAN"
+data_q3$h_country[data_q3$data_plot.Code == "RUS"] <- "RUS"
+
+#drop na
+data_q3a <- data_q3 %>%
+  filter(ave(!is.na(h_country),FUN = all))
+
+#I should capitalized "H""
+data_q3a$is_host[data_q3a$is_host == "host"] <- "Host"
+
+###plotting
+plot_q3 <- ggplot(data_q3a, aes(x = data_plot.Year, y = n))+
+  geom_point(aes(color=is_host))+
+  facet_wrap(~h_country, ncol = 5, nrow = 5, drop = FALSE)+
+  ggtitle("Host Country Advantage?", subtitle = "Maybe its' correlated to success!")+
+  theme_bw()+
+  theme(legend.position = "right",
+        legend.title = element_blank(),
+        axis.text.x = element_text(angle = -30, vjust = 1, hjust = 0))+
+  xlab("Year")+
+  ylab("Total medals earned")+
+  scale_color_manual(values = c("#fd8d3c","#41b6c4"))
+
+  
+plot_q3
+```
+
+```{r Q6}
+####Q6
+
+#Interactive plots
+
+library(plotly)
+
+#First plot, I use the plot from quesiton 2
+
+sub1 <-plot_ly(data = data_q2a, x= ~is_top10, y= ~n, name ="Total", type = "bar", line = list(color = "#74a9cf", width = 1.5)) %>%
+  layout(autosize = F)
+
+sub2 <- plot_ly(data = data_q2a, x= ~is_top10, y= ~logpopu, name ="Log Population",type = "bar", line = list(color = "#3690c0", width = 1.5)) %>%
+  layout(autosize = F)
+
+sub3 <- plot_ly(data = data_q2a, x= ~is_top10, y= ~data_plot.GDP.per.Capita, name ="GDP",type = "bar", line = list(color = "#0570b0", width = 1.5)) %>%
+  layout(autosize = F)
+
+
+q6plot <- 
+  subplot(sub1, sub2, sub3, shareY = F) %>%
+  layout(title = "Top 10 Countries in Winter Olympics: Ranked by Gold Medals",
+         showlegend = T,
+         list(
+           list(x = 0.15 , y = 1.05, text = "Total", showarrow = F, xref='paper', yref='paper'),
+           list(x = 0.5 , y = 0.95, text = "Log Population", showarrow = F, xref='paper', yref='paper'), 
+           list(x = 0.85 , y = 1.05, text = "GDP", showarrow = F, xref='paper', yref='paper')))
+q6plot
+
+#Second plot, I use the plot from question 3
+
+plot_q3a <- ggplot(data_q3a, aes(x = data_plot.Year, y = n))+
+  geom_point(aes(color=is_host))+
+  facet_wrap(~h_country, ncol = 5, nrow = 5, drop = FALSE)+
+  ggtitle("Host Country Advantage")+
+  theme_bw()+
+  theme(legend.position = "right",
+        legend.title = element_blank(),
+        axis.text.x = element_text(angle = -30, vjust = 1, hjust = 0))+
+  ylab("Total medals earned")+
+  xlab("")
+  scale_color_manual(values = c("#fd8d3c","#41b6c4"))
+
+ggplotly(plot_q3a)
+```
+
+```{r Q7}
+####Q7
+
+# I use the dataset from question 3, and clean it a little bit
+data_q7 <- data_q3
+data_q7 <- data_q7 %>% mutate(data_plot.gold=NULL,data_plot.silver=NULL,data_plot.bronze=NULL)
+data_q7 <- data_q7 %>% mutate(h_country=NULL)
+data_q7$is_host[data_q7$is_host == "host"] <- "Host"
+
+
+library(DT)
+
+###Datatable
+table_q7 <- data_q7 %>%
+  datatable(rownames = FALSE,
+            colnames = c("Country Code", "Country", "Year", "Total Medals", "Host"), caption = "Winter Olympics", filter = "top")
+
+table_q7 
